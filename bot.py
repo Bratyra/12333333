@@ -5,9 +5,6 @@ import asyncio
 
 TOKEN = "9b5f896e199287ac7d2e9e33508204d73e16667a76dd269cf607fbf87e02996e"
 
-GUILD_ID = 1347586598300160084
-REGISTER_CHANNEL = 1526986113229787296
-
 API_URL = "https://lostfront.ru/api/confirm.php"
 
 intents = discord.Intents.default()
@@ -16,13 +13,14 @@ intents.members = True
 intents.messages = True
 intents.message_content = True
 
-bot = commands.Bot(intents=intents)
+# ИСПРАВЛЕНИЕ: добавлен command_prefix="!"
+bot = commands.Bot(command_prefix="!", intents=intents)
 
 class VerifyModal(discord.ui.Modal):
     def __init__(self):
         super().__init__(title="Привязка аккаунта")
-
-        self.code = discord.ui.InputText(
+        # ИСПРАВЛЕНИЕ: TextInput вместо InputText
+        self.code = discord.ui.TextInput(
             label="Введите код с сайта",
             placeholder="LF-XXXX-XXXX",
             required=True,
@@ -63,34 +61,22 @@ class VerifyView(discord.ui.View):
 @bot.event
 async def on_ready():
     print("=" * 40)
-    print(" LostFront BOT")
-    print("=" * 40)
     print(f"Бот: {bot.user}")
-    print(f"ID: {bot.user.id}")
     print("Статус: ONLINE")
-
     bot.add_view(VerifyView())
-
-    await bot.change_presence(
-        activity=discord.Game(name="LostFront")
-    )
+    await bot.change_presence(activity=discord.Game(name="LostFront"))
     print("=" * 40)
 
-@bot.slash_command(description="Опубликовать сообщение регистрации")
+# Примечание: slash_command работает в discord.py через app_commands, 
+# если не установлена библиотека py-cord.
+@bot.command()
 @commands.has_permissions(administrator=True)
 async def setup(ctx):
     embed = discord.Embed(
         title="🪖 Регистрация LostFront",
-        description="""Для привязки аккаунта нажмите кнопку ниже.
-
-После этого откроется окно,
-куда необходимо вставить код,
-полученный на сайте.""",
+        description="Для привязки аккаунта нажмите кнопку ниже.",
         color=0xc62828
     )
-    embed.set_footer(text="LostFront Military Minecraft")
-    
-    await ctx.channel.send(embed=embed, view=VerifyView())
-    await ctx.respond("✅ Готово.", ephemeral=True)
+    await ctx.send(embed=embed, view=VerifyView())
 
 bot.run(TOKEN)
