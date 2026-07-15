@@ -4,7 +4,7 @@ import requests
 import asyncio
 
 API_URL = "https://lostfront.ru/api/confirm.php"
-
+TOKEN = "9b5f896e199287ac7d2e9e33508204d73e16667a76dd269cf607fbf87e02996e"
 intents = discord.Intents.default()
 intents.guilds = True
 intents.members = True
