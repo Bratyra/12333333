@@ -1,81 +1,156 @@
 import discord
 from discord.ext import commands
-from dotenv import load_dotenv
-import os
+import requests
+import asyncio
 
-load_dotenv()
+TOKEN = "9b5f896e199287ac7d2e9e33508204d73e16667a76dd269cf607fbf87e02996e"
 
-TOKEN = os.getenv("DISCORD_TOKEN")
+GUILD_ID = 1347586598300160084
+REGISTER_CHANNEL = 1526986113229787296
+
+API_URL = "https://lostfront.ru/api/confirm.php"
 
 intents = discord.Intents.default()
 intents.guilds = True
-intents.voice_states = True
+intents.members = True
+intents.messages = True
 
-bot = commands.Bot(command_prefix="!", intents=intents)
+bot = commands.Bot(intents=intents)
 
-# чтобы помнить канал
-voice_channel_id = None
+class VerifyModal(discord.ui.Modal):
 
+    def __init__(self):
+        super().__init__(title="Привязка аккаунта")
 
-@bot.event
+        self.code = discord.ui.InputText(
+            label="Введите код с сайта",
+            placeholder="LF-XXXX-XXXX",
+            required=True,
+            max_length=30
+        )
+
+        self.add_item(self.code)
+            async def callback(self, interaction: discord.Interaction):
+
+        await interaction.response.defer(ephemeral=True)
+
+        try:
+
+            r = requests.post(API_URL, json={
+
+                "code": self.code.value,
+                "discord_id": str(interaction.user.id),
+                "discord_name": interaction.user.name
+
+            }, timeout=10)
+
+            data = r.json()
+
+        except Exception:
+
+            await interaction.followup.send(
+                "❌ Не удалось связаться с сайтом.",
+                ephemeral=True
+            )
+
+            return
+
+        if data.get("success"):
+
+            await interaction.followup.send(
+                "✅ Аккаунт успешно привязан!",
+                ephemeral=True
+            )
+
+        else:
+
+            await interaction.followup.send(
+                f"❌ {data.get('message','Ошибка')}",
+                ephemeral=True
+            )
+            class VerifyView(discord.ui.View):
+
+    def __init__(self):
+        super().__init__(timeout=None)
+
+    @discord.ui.button(
+        label="🔗 Привязать аккаунт",
+        style=discord.ButtonStyle.green,
+        custom_id="lostfront_verify"
+    )
+    async def verify_button(self, button, interaction):
+
+        await interaction.response.send_modal(
+            VerifyModal()
+        )
+        @bot.event
 async def on_ready():
-    print(f"Бот запущен как {bot.user}")
 
-    try:
-        synced = await bot.tree.sync()
-        print(f"Синхронизировано {len(synced)} команд")
-    except Exception as e:
-        print(e)
+    print("=" * 40)
+    print(" LostFront BOT")
+    print("=" * 40)
 
+    print(f"Бот: {bot.user}")
+    print(f"ID: {bot.user.id}")
 
-@bot.tree.command(name="join", description="Бот заходит в голосовой канал по ID")
-async def join(interaction: discord.Interaction, channel_id: str):
-    global voice_channel_id
+    print("Статус: ONLINE")
 
-    await interaction.response.defer()
+    bot.add_view(
+        VerifyView()
+    )
 
-    channel = interaction.guild.get_channel(int(channel_id))
+    await bot.change_presence(
 
-    if channel is None:
-        await interaction.followup.send("Канал не найден")
-        return
+        activity=discord.Game(
+            name="LostFront"
+        )
 
-    if not isinstance(channel, discord.VoiceChannel):
-        await interaction.followup.send("Это не голосовой канал")
-        return
+    )
 
-    vc = interaction.guild.voice_client
+    print("=" * 40)
+    @bot.slash_command(
+    description="Опубликовать сообщение регистрации"
+)
+@commands.has_permissions(administrator=True)
+async def setup(ctx):
 
-    if vc is not None:
-        await interaction.followup.send("Бот уже подключен к голосовому каналу")
-        return
+    embed = discord.Embed(
 
-    try:
-        await channel.connect(reconnect=True)
-        voice_channel_id = channel.id
-        await interaction.followup.send(f"Подключился к {channel.name}")
-    except Exception as e:
-        await interaction.followup.send(f"Ошибка подключения: {e}")
+        title="🪖 Регистрация LostFront",
 
+        description="""
 
-# если бота кикнули — он возвращается
-@bot.event
-async def on_voice_state_update(member, before, after):
-    global voice_channel_id
+Для привязки аккаунта нажмите кнопку ниже.
 
-    if member.id != bot.user.id:
-        return
+После этого откроется окно,
+куда необходимо вставить код,
+полученный на сайте.
 
-    if after.channel is None and voice_channel_id is not None:
-        guild = before.channel.guild
-        channel = guild.get_channel(voice_channel_id)
+""",
 
-        if channel:
-            try:
-                await channel.connect(reconnect=True)
-                print("Переподключился к голосовому каналу")
-            except:
-                pass
+        color=0xc62828
 
+    )
 
-bot.run(TOKEN)
+    embed.set_footer(
+
+        text="LostFront Military Minecraft"
+
+    )
+
+    await ctx.channel.send(
+
+        embed=embed,
+
+        view=VerifyView()
+
+    )
+
+    await ctx.respond(
+
+        "✅ Готово.",
+
+        ephemeral=True
+
+    )
+    bot.run(TOKEN)
