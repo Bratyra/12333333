@@ -3,8 +3,6 @@ from discord.ext import commands
 import requests
 import asyncio
 
-TOKEN = "9b5f896e199287ac7d2e9e33508204d73e16667a76dd269cf607fbf87e02996e"
-
 API_URL = "https://lostfront.ru/api/confirm.php"
 
 intents = discord.Intents.default()
